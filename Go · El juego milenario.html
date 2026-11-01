@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Go · El juego milenario</title>
+<style>
+:root{--bg:#f6f1e7;--fg:#2b2418;--card:#fffdf8;--bd:#d9ccb3;--ac:#8a5a2b;--mut:#7a6d58;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1d1a15;--fg:#efe7d6;--card:#2a2620;--bd:#4a4235;--ac:#d9a15f;--mut:#a89c85;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1d1a15;--fg:#efe7d6;--card:#2a2620;--bd:#4a4235;--ac:#d9a15f;--mut:#a89c85;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.4 system-ui,-apple-system,Segoe UI,sans-serif}
+.w{max-width:620px;margin:0 auto;padding:12px}
+h1{margin:4px 0 2px;font-size:1.6rem}.sub{color:var(--mut);margin:0 0 12px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:10px}
+label{display:block;font-size:.85rem;color:var(--mut);margin:8px 0 3px}
+input,select{width:100%;box-sizing:border-box;padding:10px;font-size:1rem;border-radius:8px;border:1px solid var(--bd);background:var(--bg);color:var(--fg)}
+button{padding:10px 14px;font-size:1rem;border-radius:8px;border:1px solid var(--ac);background:var(--card);color:var(--fg);cursor:pointer}
+button.p{background:var(--ac);color:#fff;font-weight:600}
+.big{width:100%;margin-top:14px;padding:13px}
+.hid{display:none!important}
+.pl{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.pc{background:var(--card);border:2px solid var(--bd);border-radius:12px;padding:8px 10px;font-size:.88rem}
+.pc.on{border-color:var(--ac);box-shadow:0 0 0 2px var(--ac) inset}
+.pc b{display:flex;align-items:center;gap:6px;font-size:1rem;overflow:hidden;white-space:nowrap}
+.dot{width:14px;height:14px;border-radius:50%;flex:none;border:1px solid #888}
+.d1{background:#111}.d2{background:#fff}
+.big2{font-size:1.35rem;font-weight:700}
+#status{text-align:center;margin:6px 0;font-weight:600;min-height:1.4em}
+.sm{text-align:center;color:var(--mut);font-size:.85rem}
+canvas{display:block;margin:6px auto;border-radius:6px;touch-action:manipulation;max-width:100%}
+.bt{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:8px}
+#ov{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:20}
+#ov .card{max-width:340px;text-align:center;margin:0}
+#tu{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:30;overflow:auto}
+#tu .card{max-width:360px;text-align:center;margin:0}
+</style></head><body><div class="w">
+
+<div id="setup">
+<h1>Go · 囲碁</h1><p class="sub">El juego de estrategia milenario. Rodea territorio y captura piedras.</p>
+<div class="card">
+<label>Modo</label><select id="mode"><option value="ia">1 jugador contra el ordenador</option><option value="2p">2 jugadores</option></select>
+<label>Jugador 1 (Negro)</label><input id="nm1" maxlength="16" placeholder="Tu nombre">
+<div id="r2" class="hid"><label>Jugador 2 (Blanco)</label><input id="nm2" maxlength="16" placeholder="Nombre"></div>
+<div id="lv"><label>Nivel del ordenador</label><select id="level"><option value="1">1 · Aprendiz (fácil)</option><option value="2" selected>2 · Estudiante (medio)</option><option value="3">3 · Maestro (difícil)</option></select></div>
+<label>Tamaño del tablero</label><select id="size"><option value="9" selected>9 × 9 (rápido)</option><option value="13">13 × 13</option><option value="19">19 × 19 (oficial)</option></select>
+<label>Tiempo por jugador</label><select id="time"><option value="0">Sin límite</option><option value="5">5 minutos</option><option value="10">10 minutos</option><option value="20">20 minutos</option><option value="30">30 minutos</option></select>
+<button class="big" id="bt1">📖 Tutorial: aprende a jugar</button>
+<button class="p big" id="go">Empezar partida</button>
+</div>
+<div class="card sm" style="text-align:left">Reglas: se pone una piedra por turno en una intersección. Una piedra o grupo sin libertades (huecos vacíos adyacentes) es capturado. Prohibido el suicidio y el ko. Al pasar ambos, se marcan las piedras muertas y se cuenta: piedras + territorio (puntuación por área). Blanco recibe 6,5 de komi.</div>
+</div>
+
+<div id="game" class="hid">
+<div class="pl">
+<div class="pc" id="pc1"><b><span class="dot d1"></span><span id="n1"></span></b>Puntos: <span class="big2" id="p1"></span><br>Cautivas: <span id="c1"></span><br>⏱ <span id="t1"></span></div>
+<div class="pc" id="pc2"><b><span class="dot d2"></span><span id="n2"></span></b>Puntos: <span class="big2" id="p2"></span><br>Cautivas: <span id="c2"></span><br>⏱ <span id="t2"></span></div>
+</div>
+<div class="sm" id="info"></div>
+<div id="status"></div>
+<canvas id="cv"></canvas>
+<div class="bt" id="b1"><button id="bp">Pasar</button><button id="br">Rendirse</button><button id="bn">Nueva partida</button><button id="bt2">📖 Tutorial</button></div>
+<div class="bt hid" id="b2"><button class="p" id="bc">Confirmar puntuación</button></div>
+</div>
+</div>
+<div id="tu" class="hid"><div class="card"><h2 id="tt" style="margin:0 0 6px"></h2><canvas id="tm" style="width:200px;height:200px"></canvas><p id="td" style="text-align:left"></p><div class="sm" id="tc"></div><div class="bt"><button id="tp">Anterior</button><button class="p" id="tn">Siguiente</button></div><button id="tx" style="margin-top:8px">Salir del tutorial</button></div></div>
+<div id="ov" class="hid"><div class="card"><h2 id="ot" style="margin-top:0"></h2><p id="od"></p><button class="p big" id="oa">Jugar otra vez</button></div></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const LV=["","Aprendiz","Estudiante","Maestro"],KOMI=6.5;
+let N,B,turn,caps,ko,passes,last,phase,mode,level,names,used,limit,dead,over,moves,hov=-1,cell,S,cv=$("#cv"),ctx=cv.getContext("2d"),lastT=Date.now(),tt;
+const f=x=>String(x%1?x.toFixed(1):x).replace(".",",");
+const fmt=ms=>{const s=Math.floor(ms/1000);return Math.floor(s/60)+":"+String(s%60).padStart(2,"0")};
+const nb=i=>{const x=i%N,y=(i/N)|0,r=[];if(x>0)r.push(i-1);if(x<N-1)r.push(i+1);if(y>0)r.push(i-N);if(y<N-1)r.push(i+N);return r};
+function grp(b,i){const c=b[i],st=[i],seen=new Set([i]),l=new Set();for(let k=0;k<st.length;k++)for(const n of nb(st[k])){if(b[n]===0)l.add(n);else if(b[n]===c&&!seen.has(n)){seen.add(n);st.push(n)}}return{s:st,l}}
+function play(b,i,c,koi){if(b[i]||i===koi)return null;const o=3-c,b2=b.slice();b2[i]=c;let cap=0,cp=-1;
+for(const n of nb(i))if(b2[n]===o){const g=grp(b2,n);if(g.l.size===0)for(const s of g.s){b2[s]=0;cap++;cp=s}}
+const g=grp(b2,i);if(g.l.size===0)return null;
+return{b:b2,cap,g,ko:(cap===1&&g.s.length===1&&g.l.size===1)?cp:-1}}
+function area(b,dd){const b2=b.slice();if(dd)for(const i of dd)b2[i]=0;const sc=[0,0,0],t=[0,0,0],seen=new Uint8Array(N*N),mark=new Array(N*N).fill(0);
+for(let i=0;i<N*N;i++){if(b2[i])sc[b2[i]]++;else if(!seen[i]){const st=[i];seen[i]=1;let m=0;for(let k=0;k<st.length;k++)for(const n of nb(st[k])){if(b2[n])m|=b2[n];else if(!seen[n]){seen[n]=1;st.push(n)}}
+if(m===1||m===2){t[m]+=st.length;for(const s of st)mark[s]=m}}}
+return{1:sc[1]+t[1],2:sc[2]+t[2]+KOMI,mark}}
+const isAI=t=>mode==="ia"&&t===2;
+
+function aiTurn(){if(over||phase!=="play"||!isAI(turn))return;const c=turn,o=3-c,f1=[0,.3,.8,1][level],nz=[0,14,5,1.2][level];let best=-1,bs=-1e9;
+for(let i=0;i<N*N;i++){if(B[i])continue;const ns=nb(i);if(ns.every(n=>B[n]===c))continue;const r=play(B,i,c,ko);if(!r)continue;
+let s=r.cap*10;const L=r.g.l.size;if(L===1)s-=9+r.g.s.length*3;else s+=Math.min(L,4)*.5;
+for(const n of ns){if(B[n]===o&&r.b[n]===o){const g=grp(r.b,n);if(g.l.size===1)s+=5+g.s.length*2;else if(g.l.size===2)s+=1}
+if(B[n]===c){const g0=grp(B,n);if(g0.l.size===1&&L>1)s+=7*g0.s.length}}
+const x=i%N,y=(i/N)|0,d=Math.min(x,y,N-1-x,N-1-y);s+=d===0?-3:d===1?-.5:d<=3?1.5:.5;
+let near=0;for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){const xx=x+dx,yy=y+dy;if(xx>=0&&yy>=0&&xx<N&&yy<N&&B[yy*N+xx])near++}
+s+=Math.min(near,3)*.4;
+if(level===3){const a=area(r.b);s+=(a[c]-a[o])*.25}
+s=s*f1+Math.random()*nz;if(s>bs){bs=s;best=i}}
+const a=area(B),st=B.filter(x=>x).length;
+if(best<0||(passes>0&&a[c]>a[o])||(st>N*N*.55&&bs<2.5))pass();else move(best)}
+
+function move(i){if(over||phase!=="play")return;const r=play(B,i,turn,ko);if(!r){toast("Jugada no permitida (suicidio o ko)");return}
+B=r.b;caps[turn]+=r.cap;ko=r.ko;passes=0;last=i;moves++;next()}
+function pass(){if(over||phase!=="play")return;toast(names[turn]+" pasa");passes++;last=-1;moves++;if(passes>=2){phase="score";dead=new Set();$("#b1").classList.add("hid");$("#b2").classList.remove("hid");draw();ui();return}next()}
+function next(){turn=3-turn;draw();ui();if(isAI(turn))setTimeout(aiTurn,500)}
+let tm;function toast(m){$("#status").textContent=m;clearTimeout(tm);tm=setTimeout(ui,1600)}
+
+function ui(){const a=area(B,phase==="score"?dead:null);
+for(const c of[1,2]){$("#n"+c).textContent=names[c];$("#c"+c).textContent=caps[c];$("#t"+c).textContent=fmt(used[c])+(limit?" / "+fmt(limit):"");$("#p"+c).textContent=f(a[c]);$("#pc"+c).classList.toggle("on",!over&&phase==="play"&&turn===c)}
+$("#info").textContent=(mode==="ia"?"Nivel "+level+" · "+LV[level]:"2 jugadores")+" · "+N+"×"+N+" · Jugada "+moves+" · Partida "+fmt(used[1]+used[2])+" · Komi 6,5";
+$("#status").textContent=over?"Partida terminada":phase==="score"?"Toca las piedras muertas para marcarlas y confirma":"Turno de "+names[turn]+(turn===1?" (Negro)":" (Blanco)")}
+
+function finish(w,txt,diff){over=true;draw();ui();const pts=Math.round((diff+10)*(mode==="ia"?level:1)*(N/9));
+$("#ot").textContent="🏆 Gana "+names[w];
+$("#od").innerHTML="";const l1=document.createElement("div");l1.textContent=txt;const l2=document.createElement("div");l2.style.marginTop="8px";l2.textContent="Puntos de partida: "+pts+" · Duración "+fmt(used[1]+used[2]);$("#od").append(l1,l2);$("#ov").classList.remove("hid")}
+function sc(){const a=area(B,dead);finish(a[1]>a[2]?1:2,names[1]+" "+f(a[1])+" — "+names[2]+" "+f(a[2])+" (con komi)",Math.abs(a[1]-a[2]))}
+
+function resize(){S=Math.min(innerWidth-24,600);const d=devicePixelRatio||1;cv.style.width=S+"px";cv.style.height=S+"px";cv.width=S*d;cv.height=S*d;ctx.setTransform(d,0,0,d,0,0);cell=S/(N+1);draw()}
+function stone(x,y,c,al){const r=cell*.46;ctx.globalAlpha=al;ctx.fillStyle="rgba(0,0,0,.3)";ctx.beginPath();ctx.arc(x+1.5,y+2,r,0,7);ctx.fill();
+const g=ctx.createRadialGradient(x-r*.35,y-r*.35,r*.1,x,y,r);if(c===1){g.addColorStop(0,"#666");g.addColorStop(1,"#0a0a0a")}else{g.addColorStop(0,"#fff");g.addColorStop(1,"#c4bfb2")}
+ctx.fillStyle=g;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();ctx.globalAlpha=1}
+function draw(){if(!B)return;ctx.fillStyle="#dcb35c";ctx.fillRect(0,0,S,S);ctx.strokeStyle="#5a4220";ctx.lineWidth=1;ctx.beginPath();
+for(let k=1;k<=N;k++){ctx.moveTo(cell,k*cell);ctx.lineTo(N*cell,k*cell);ctx.moveTo(k*cell,cell);ctx.lineTo(k*cell,N*cell)}ctx.stroke();
+const st=N===9?[2,4,6]:N===13?[3,6,9]:[3,9,15];ctx.fillStyle="#3a2a10";for(const a of st)for(const b of st){ctx.beginPath();ctx.arc((a+1)*cell,(b+1)*cell,cell*.09,0,7);ctx.fill()}
+const A=phase==="score"?area(B,dead):null;
+for(let i=0;i<N*N;i++){const x=(i%N+1)*cell,y=((i/N|0)+1)*cell;
+if(A&&A.mark[i]){ctx.fillStyle=A.mark[i]===1?"#000":"#fff";ctx.globalAlpha=.8;ctx.fillRect(x-cell*.13,y-cell*.13,cell*.26,cell*.26);ctx.globalAlpha=1}
+if(B[i])stone(x,y,B[i],dead&&dead.has(i)?.35:1)}
+if(last>=0){ctx.strokeStyle=B[last]===1?"#fff":"#c00";ctx.lineWidth=2;ctx.beginPath();ctx.arc((last%N+1)*cell,((last/N|0)+1)*cell,cell*.2,0,7);ctx.stroke()}
+if(hov>=0&&!over&&phase==="play"&&!B[hov]&&!isAI(turn))stone((hov%N+1)*cell,((hov/N|0)+1)*cell,turn,.45)}
+function pos(e){const r=cv.getBoundingClientRect(),x=Math.round((e.clientX-r.left)/r.width*S/cell)-1,y=Math.round((e.clientY-r.top)/r.height*S/cell)-1;return x<0||y<0||x>=N||y>=N?-1:y*N+x}
+cv.addEventListener("pointermove",e=>{const h=pos(e);if(h!==hov){hov=h;draw()}});
+cv.addEventListener("pointerleave",()=>{hov=-1;draw()});
+cv.addEventListener("click",e=>{const i=pos(e);if(i<0||over)return;
+if(phase==="play"){if(!isAI(turn))move(i)}
+else if(B[i]){const g=grp(B,i),isD=dead.has(i);for(const s of g.s)isD?dead.delete(s):dead.add(s);draw();ui()}});
+
+$("#mode").onchange=()=>{const a=$("#mode").value==="ia";$("#r2").classList.toggle("hid",a);$("#lv").classList.toggle("hid",!a)};
+$("#go").onclick=()=>{N=+$("#size").value;mode=$("#mode").value;level=+$("#level").value;limit=+$("#time").value*60000;
+names=["",$("#nm1").value.trim()||"Jugador 1",mode==="ia"?"Ordenador":($("#nm2").value.trim()||"Jugador 2")];
+B=new Array(N*N).fill(0);turn=1;caps=[0,0,0];ko=-1;passes=0;last=-1;phase="play";over=false;used=[0,0,0];dead=new Set();moves=0;
+$("#setup").classList.add("hid");$("#game").classList.remove("hid");$("#b1").classList.remove("hid");$("#b2").classList.add("hid");$("#ov").classList.add("hid");lastT=Date.now();resize();ui()};
+$("#bp").onclick=()=>{if(!isAI(turn))pass()};
+$("#br").onclick=()=>{if(over||!confirm("¿Seguro que quieres rendirte?"))return;const w=mode==="ia"?1:turn;finish(3-w,names[w]+" se rinde",0)};
+$("#bn").onclick=()=>{if(over||confirm("¿Abandonar la partida actual?")){over=true;$("#game").classList.add("hid");$("#setup").classList.remove("hid")}};
+$("#bc").onclick=sc;
+$("#oa").onclick=()=>{$("#ov").classList.add("hid");$("#game").classList.add("hid");$("#setup").classList.remove("hid")};
+const TU=[
+{t:"1 · El objetivo",d:"Go se juega entre Negro y Blanco sobre un tablero de líneas. Gana quien controle más espacio al final: tus piedras más el territorio que logres rodear. Aquí Negro domina la izquierda y Blanco la derecha.",r:["nnXOw","nnXOw","nnXOw","nnXOw","nnXOw"]},
+{t:"2 · Colocar piedras",d:"Negro empieza y se alternan los turnos. Cada jugador pone una piedra por turno en una intersección (donde se cruzan las líneas, no en los cuadros). Una vez puestas, las piedras no se mueven.",r:[".....",".....","..X..","...O.","....."]},
+{t:"3 · Libertades",d:"Las libertades de una piedra son los puntos vacíos pegados a ella (arriba, abajo, izquierda y derecha). Aquí la piedra negra tiene 4 libertades, marcadas en verde. Las piedras conectadas forman un grupo y comparten libertades.",r:[".....","..a..",".aXa.","..a..","....."]},
+{t:"4 · Capturar",d:"Si a una piedra o grupo rival le quitas todas las libertades, lo capturas y lo retiras del tablero. La piedra blanca solo tiene una libertad (punto verde): si Negro juega ahí, la captura. Cada piedra capturada es una cautiva.",r:[".....","..X..",".XOX.","..a..","....."]},
+{t:"5 · Jugadas prohibidas",d:"Suicidio: no puedes poner una piedra donde quede sin libertades, salvo que con ella captures (Blanco no puede jugar en la marca roja). Ko: no se puede repetir al instante la posición anterior; si te capturan una piedra en ko, debes jugar en otro sitio antes de recapturar.",r:["xX...","X....",".....",".....","....."]},
+{t:"6 · Pasar y terminar",d:"Si no quieres o no puedes mejorar tu posición, pulsa Pasar. Cuando pasan los dos jugadores seguidos, la partida entra en el recuento: toca las piedras que han quedado muertas (sin posibilidad de salvarse) para marcarlas y pulsa Confirmar puntuación. También puedes rendirte.",r:[".....",".XXX.",".XOX.",".XXX.","....."]},
+{t:"7 · Puntuación",d:"Cada jugador suma sus piedras vivas más los puntos vacíos que solo él rodea (cuadrados pequeños). Como Negro mueve primero, Blanco recibe 6,5 puntos de compensación (komi). Gana quien tenga más puntos.",r:["nXOww","nXOww","nXOww","nXOww","nXOww"]},
+{t:"8 · Consejos",d:"Empieza en el tablero 9×9 y nivel Aprendiz. Juega primero en las esquinas, luego en los lados y después en el centro. Vigila las libertades de tus grupos y conecta tus piedras. Mantén los grupos con al menos dos libertades, y no te obsesiones con capturar: lo importante es el territorio. ¡Buena partida!",r:["X....",".....","..X..",".....","....O"]}
+];
+let ti=0;
+function mini(r){const c=$("#tm"),n=r.length,z=200,d=devicePixelRatio||1;c.width=z*d;c.height=z*d;const x=c.getContext("2d");x.setTransform(d,0,0,d,0,0);const k=z/(n+1);x.fillStyle="#dcb35c";x.fillRect(0,0,z,z);x.strokeStyle="#5a4220";x.lineWidth=1;x.beginPath();for(let i=1;i<=n;i++){x.moveTo(k,i*k);x.lineTo(n*k,i*k);x.moveTo(i*k,k);x.lineTo(i*k,n*k)}x.stroke();
+r.forEach((row,j)=>[...row].forEach((ch,i)=>{const px=(i+1)*k,py=(j+1)*k;
+if(ch==="X"||ch==="O"){const g=x.createRadialGradient(px-4,py-4,2,px,py,k*.45);if(ch==="X"){g.addColorStop(0,"#666");g.addColorStop(1,"#0a0a0a")}else{g.addColorStop(0,"#fff");g.addColorStop(1,"#c4bfb2")}x.fillStyle=g;x.beginPath();x.arc(px,py,k*.45,0,7);x.fill()}
+else if(ch==="a"||ch==="x"){x.fillStyle=ch==="a"?"#2e9e44":"#d22";x.beginPath();x.arc(px,py,k*.16,0,7);x.fill()}
+else if(ch==="n"||ch==="w"){x.fillStyle=ch==="n"?"#000":"#fff";x.fillRect(px-k*.13,py-k*.13,k*.26,k*.26)}}))}
+function tuShow(){const s=TU[ti];$("#tt").textContent=s.t;$("#td").textContent=s.d;$("#tc").textContent=(ti+1)+" / "+TU.length;$("#tp").disabled=ti===0;$("#tn").textContent=ti===TU.length-1?"Cerrar":"Siguiente";mini(s.r)}
+function tuOpen(){ti=0;tuShow();$("#tu").classList.remove("hid")}
+$("#bt1").onclick=tuOpen;$("#bt2").onclick=tuOpen;
+$("#tp").onclick=()=>{if(ti>0){ti--;tuShow()}};
+$("#tn").onclick=()=>{if(ti<TU.length-1){ti++;tuShow()}else $("#tu").classList.add("hid")};
+$("#tx").onclick=()=>$("#tu").classList.add("hid");
+addEventListener("resize",()=>{if(B&&!$("#game").classList.contains("hid"))resize()});
+setInterval(()=>{const n=Date.now(),d=n-lastT;lastT=n;if(!B||over||phase!=="play"||$("#game").classList.contains("hid")||!$("#tu").classList.contains("hid"))return;used[turn]+=d;
+if(limit&&used[turn]>=limit){used[turn]=limit;finish(3-turn,"Tiempo agotado para "+names[turn],0);return}ui()},250);
+</script></body></html>
